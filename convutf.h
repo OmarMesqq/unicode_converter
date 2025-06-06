@@ -1,5 +1,11 @@
 #include <stdio.h>
 
-int convUtf8p32(FILE *arquivo_entrada, FILE *arquivo_saida);
-int convUtf32p8(FILE *arquivo_entrada, FILE *arquivo_saida);
+/**
+ * Converts a UTF-8 `in` file into a UTF-32 `out` file
+ */
+int convUtf8to32(FILE* in, FILE* out);
 
+/**
+ * Converts a UTF-32 (Little or Big Endian) `in` file into a UTF-8 `out` file
+ */
+int convUtf32to8(FILE* in, FILE* out);

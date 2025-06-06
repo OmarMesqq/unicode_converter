@@ -23,11 +23,11 @@ int main() {
     }
 
     // Convertendo arquivo UTF-8 para UTF-32
-    convUtf8p32(entradaUtf8, saidaUtf8);
+    convUtf8to32(entradaUtf8, saidaUtf8);
 
     // Convertendo arquivos UTF-32 para UTF-8
-    convUtf32p8(entradaUtf32Le, saidaUtf32Le);
-    convUtf32p8(entradaUtf32Be, saidaUtf32Be);
+    convUtf32to8(entradaUtf32Le, saidaUtf32Le);
+    convUtf32to8(entradaUtf32Be, saidaUtf32Be);
 
     fclose(entradaUtf8);
     fclose(entradaUtf32Le);

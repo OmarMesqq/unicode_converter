@@ -1,19 +1,19 @@
 #include "convutf.h"
 #include <stdio.h>
 
-int convUtf8p32(FILE *arquivo_entrada, FILE *arquivo_saida) {
+int convUtf8to32(FILE* in, FILE* out) {
     unsigned char c = 0;
     unsigned int utf32Code = 0;
     unsigned char mask = 0x00;
 
     // BOM Little Endian: FF FE 00 00
     unsigned char bom[4] = {255, 254, 0, 0};
-    if (fwrite(bom, sizeof(char), 4, arquivo_saida) != 4) {
+    if (fwrite(bom, sizeof(char), 4, out) != 4) {
         fprintf(stderr, "%s: %s", "Falha do tipo E/S:", "erro ao escrever BOM no arquivo convertido para UTF-32.\n");
         return -1;
     }
 
-    while (fread(&c, 1, 1, arquivo_entrada) > 0) {
+    while (fread(&c, 1, 1, in) > 0) {
         if ((c & 0x80) == 0) {
             // 80 (16) = 1000 0000 (2)
             // 1 byte (0xxxxxxx)
@@ -38,7 +38,7 @@ int convUtf8p32(FILE *arquivo_entrada, FILE *arquivo_saida) {
             
             // extrai 6 bits menos significativos do segundo byte
             mask = 0x3F;
-            fread(&c, 1, 1, arquivo_entrada);
+            fread(&c, 1, 1, in);
             c &= mask;
             utf32Code |= c;
             
@@ -54,11 +54,11 @@ int convUtf8p32(FILE *arquivo_entrada, FILE *arquivo_saida) {
 
             // extrai 6 bits menos significativos do segundo byte e do terceiro byte
             mask = 0x3F;
-            fread(&c, 1, 1, arquivo_entrada);
+            fread(&c, 1, 1, in);
             c &= mask;
             utf32Code |= (c << 6);
 
-            fread(&c, 1, 1, arquivo_entrada);
+            fread(&c, 1, 1, in);
             c &= mask;
             utf32Code |= c;
        
@@ -74,15 +74,15 @@ int convUtf8p32(FILE *arquivo_entrada, FILE *arquivo_saida) {
 
             // extrai 6 bits menos significativos dos segundo, terceiro e quarto bytes
             mask = 0x3F;
-            fread(&c, 1, 1, arquivo_entrada);
+            fread(&c, 1, 1, in);
             c &= mask;
             utf32Code |= (c << 12);
 
-            fread(&c, 1, 1, arquivo_entrada);
+            fread(&c, 1, 1, in);
             c &= mask;
             utf32Code |= (c << 6);
 
-            fread(&c, 1, 1, arquivo_entrada);
+            fread(&c, 1, 1, in);
             c &= mask;
             utf32Code |= c;
 
@@ -91,7 +91,7 @@ int convUtf8p32(FILE *arquivo_entrada, FILE *arquivo_saida) {
             return -1;
         }
 
-        if (fwrite(&utf32Code, sizeof(utf32Code), 1, arquivo_saida) != 1) {
+        if (fwrite(&utf32Code, sizeof(utf32Code), 1, out) != 1) {
             fprintf(stderr, "%s: %s", "Falha do tipo E/S:", "erro ao escrever inteiro correspondente ao caractere UTF-8.\n");
             return -1;
         }
@@ -101,9 +101,9 @@ int convUtf8p32(FILE *arquivo_entrada, FILE *arquivo_saida) {
     return 0;
 }
 
-int convUtf32p8(FILE *arquivo_entrada, FILE *arquivo_saida)  {
+int convUtf32to8(FILE* in, FILE* out)  {
     unsigned char bom[4] = {};
-    if (fread(bom, sizeof(unsigned char), 4, arquivo_entrada) != 4) {
+    if (fread(bom, sizeof(unsigned char), 4, in) != 4) {
         fprintf(stderr, "%s","Erro ao extrair BOM do arquivo de entrada (UTF-32)!\n");
         return -1;
     }
@@ -121,7 +121,7 @@ int convUtf32p8(FILE *arquivo_entrada, FILE *arquivo_saida)  {
 
     unsigned int value = 0;
     unsigned char utf8value = 0;
-    while (fread(&value, sizeof(value), 1, arquivo_entrada) > 0) {
+    while (fread(&value, sizeof(value), 1, in) > 0) {
         if (isBigEndian) {
             // caso arquivo seja BE, convertemos o valor atual para LE
             // assim temos apenas um padrão de lidar com os bits
@@ -146,7 +146,7 @@ int convUtf32p8(FILE *arquivo_entrada, FILE *arquivo_saida)  {
             // pega os 7 bits inferiores
             utf8value = value & 0x7F; 
             
-            fwrite(&utf8value, sizeof(utf8value), 1, arquivo_saida);  
+            fwrite(&utf8value, sizeof(utf8value), 1, out);  
 
         } else if (value <= 0x7FF) {
             // 2 bytes em UTF-8
@@ -156,14 +156,14 @@ int convUtf32p8(FILE *arquivo_entrada, FILE *arquivo_saida)  {
 
             // inicia byte com 110xxxxx
             utf8value |= 0xC0;
-            fwrite(&utf8value, sizeof(utf8value), 1, arquivo_saida);
+            fwrite(&utf8value, sizeof(utf8value), 1, out);
 
             // pega 6 bits inferiores do segundo byte
             utf8value = value & 0x3F;
             
             // inicia byte com 10xxxxxx
             utf8value |= 0x80;
-            fwrite(&utf8value, sizeof(utf8value), 1, arquivo_saida);
+            fwrite(&utf8value, sizeof(utf8value), 1, out);
 
         } else if (value <= 0xFFFF) {
             // 3 bytes em UTF-8
@@ -173,21 +173,21 @@ int convUtf32p8(FILE *arquivo_entrada, FILE *arquivo_saida)  {
             
             // inicia byte com 1110xxxx
             utf8value |= 0xE0;
-            fwrite(&utf8value, sizeof(utf8value), 1, arquivo_saida);
+            fwrite(&utf8value, sizeof(utf8value), 1, out);
 
             // pega 6 bits inferiores do segundo byte
             utf8value = (value >> 6) & 0x3F;
             
             // inicia byte com 10xxxxxx
             utf8value |= 0x80;
-            fwrite(&utf8value, sizeof(utf8value), 1, arquivo_saida);
+            fwrite(&utf8value, sizeof(utf8value), 1, out);
 
             // pega 6 bits inferiores do terceiro byte
             utf8value = value & 0x3F;
             
             // inicia byte com 10xxxxxx
             utf8value |= 0x80;
-            fwrite(&utf8value, sizeof(utf8value), 1, arquivo_saida);
+            fwrite(&utf8value, sizeof(utf8value), 1, out);
 
         } else if (value <= 0x10FFFF) {
             // 4 bytes em UTF-8
@@ -197,28 +197,28 @@ int convUtf32p8(FILE *arquivo_entrada, FILE *arquivo_saida)  {
 
             // inicia byte com 11110xxx
             utf8value |= 0xF0;
-            fwrite(&utf8value, sizeof(utf8value), 1, arquivo_saida);
+            fwrite(&utf8value, sizeof(utf8value), 1, out);
 
             // pega 6 bits inferiores do segundo byte
             utf8value = (value >> 12) & 0x3F;
             
             // inicia byte com 10xxxxxx
             utf8value |= 0x80;
-            fwrite(&utf8value, sizeof(utf8value), 1, arquivo_saida);
+            fwrite(&utf8value, sizeof(utf8value), 1, out);
 
             // pega 6 bits inferiores do terceiro byte
             utf8value = (value >> 6) & 0x3F;
             
             // inicia byte com 10xxxxxx
             utf8value |= 0x80;
-            fwrite(&utf8value, sizeof(utf8value), 1, arquivo_saida);
+            fwrite(&utf8value, sizeof(utf8value), 1, out);
 
             // pega 6 bits inferiores do quarto byte
             utf8value = value & 0x3F;
             
             // inicia byte com 10xxxxxx
             utf8value |= 0x80;
-            fwrite(&utf8value, sizeof(utf8value), 1, arquivo_saida);
+            fwrite(&utf8value, sizeof(utf8value), 1, out);
 
         } else {
             fprintf(stderr, "%s: %s", "Falha do tipo E/S:", "caractere UTF-8 inválido.\n");
