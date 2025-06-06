@@ -1,9 +1,6 @@
 #include "converteutf832.h"
 #include <stdio.h>
 
-static void dump_byte(unsigned char byte);
-static void dump_int(unsigned int x);
-
 int convUtf8p32(FILE *arquivo_entrada, FILE *arquivo_saida) {
     unsigned char c = 0;
     unsigned int utf32Code = 0;
@@ -230,22 +227,4 @@ int convUtf32p8(FILE *arquivo_entrada, FILE *arquivo_saida)  {
     }
     
     return 0;
-}
-
-static void dump_byte(unsigned char byte) {
-    for (int i = 7; i >= 0; i--) {
-        unsigned char currentBit = (byte >> i) & 1;
-        printf("%d", currentBit);
-        if (i == 4) printf(" ");
-    }
-    printf("\n");
-}
-
-static void dump_int(unsigned int x) {
-    for (int i = 31; i >= 0; i--) {
-        unsigned char currentBit = (x >> i) & 1;
-        printf("%d", currentBit);
-        if (!(i % 8)) printf(" ");
-    }
-    printf("\n");
 }
