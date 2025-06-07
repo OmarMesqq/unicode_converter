@@ -3,5 +3,5 @@ Based on a [college assignment](https://www.inf.puc-rio.br/~inf1018/2024.2/trabs
 
 Compile with:
 ```
-gcc -g -Wall -Wextra main.c converteutf832.c -o utfConverter
+gcc -g -Wall -Wextra main.c convutf.c -o utfConverter
 ```
