@@ -85,18 +85,18 @@ int main(int argc, char* argv[]) {
     // detect if input file is UTF-32 BE, UTF-32 LE, or UTF-8
     unsigned char bom[BOM_SIZE] = {0};
     if (fread(bom, sizeof(unsigned char), BOM_SIZE, fin) != BOM_SIZE) {
-        // TODO: small files
-        fprintf(stderr, "failed to read initial %d bytes of file %s to detect eventual BOM", BOM_SIZE, filename);
+        fprintf(stderr, "failed to read initial %d bytes of file %s to detect eventual BOM.", BOM_SIZE, filename);
+        fprintf(stderr, "File may be too small\n");
         ret = -1;
         goto cleanup;
     }
 
     char isUtf8 = 0;
     if (memcmp(bom, BOM_UTF32_BE, 4) == 0) {
-        printf("File is UTF-32 Big Endian");
+        printf("File is UTF-32 Big Endian\n");
     } 
     else if (memcmp(bom, BOM_UTF32_LE, 4) == 0) {
-        printf("File is UTF-32 Little Endian");
+        printf("File is UTF-32 Little Endian\n");
     } 
     else {
         printf("BOM sequence not identified. Treating file as UTF-8\n");
@@ -153,6 +153,5 @@ static char* get_basename(const char* filepath) {
         ptr++;
     }
     basename[i] = '\0';
-    // TODO: edge cases
     return basename;
 }
