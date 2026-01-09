@@ -3,7 +3,7 @@ set -uo pipefail
 
 # 1. Compile with debug symbols and all warnings
 echo "Compiling..."
-gcc -g -Wall -Wextra main.c convutf.c -o utfConverter
+make release
 
 # 2. Run conversions
 echo "Running conversions..."
