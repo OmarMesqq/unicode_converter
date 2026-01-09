@@ -1,15 +1,17 @@
 #include "convutf.h"
 #include <stdio.h>
 
+#define BOM_SIZE 4
+
 int convUtf8to32(FILE* in, FILE* out) {
     unsigned char c = 0;
     unsigned int utf32Code = 0;
     unsigned char mask = 0x00;
 
     // Little Endian BOM: FF FE 00 00
-    unsigned char bom[4] = {255, 254, 0, 0};
-    if (fwrite(bom, sizeof(char), 4, out) != 4) {
-        fprintf(stderr, "%s", "I/O error: failed to write BOM!\n");
+    unsigned char bom[BOM_SIZE] = {255, 254, 0, 0};
+    if (fwrite(bom, sizeof(char), BOM_SIZE, out) != BOM_SIZE) {
+        fprintf(stderr, "failed to write LE BOM to converted UTF-32 file!\n");
         return -1;
     }
 
@@ -17,7 +19,6 @@ int convUtf8to32(FILE* in, FILE* out) {
         if ((c & 0x80) == 0) {
             // 0x80 = 1000 0000
             // 1 byte (0xxxxxxx)
-            // ASCII compatible
             // U+0000 to U+007F
 
             // extract 7 LSBs of the byte
@@ -87,12 +88,12 @@ int convUtf8to32(FILE* in, FILE* out) {
             utf32Code |= c;
 
         } else {
-            fprintf(stderr, "%s", "I/O error: invalid UTF-8 character!\n");
+            fprintf(stderr, "invalid UTF-8 character in the given UTF-8 file!\n");
             return -1;
         }
 
         if (fwrite(&utf32Code, sizeof(utf32Code), 1, out) != 1) {
-            fprintf(stderr, "%s", "I/O error: could not write equivalent integer of UTF-8 character!\n");
+            fprintf(stderr, "could not write equivalent integer of UTF-8 character in converted UTF-32 file!\n");
             return -1;
         }
         utf32Code = 0;
@@ -102,9 +103,9 @@ int convUtf8to32(FILE* in, FILE* out) {
 }
 
 int convUtf32to8(FILE* in, FILE* out)  {
-    unsigned char bom[4] = {};
-    if (fread(bom, sizeof(unsigned char), 4, in) != 4) {
-        fprintf(stderr, "%s", "I/O error: failed to read BOM!\n");
+    unsigned char bom[BOM_SIZE] = {};
+    if (fread(bom, sizeof(unsigned char), BOM_SIZE, in) != BOM_SIZE) {
+        fprintf(stderr, "failed to read BOM of given UTF-32 file!\n");
         return -1;
     }
 
@@ -115,15 +116,14 @@ int convUtf32to8(FILE* in, FILE* out)  {
         // BOM starts with 00: Big Endian file
         isBigEndian = 1;
     } else {
-        fprintf(stderr, "%s","Invalid BOM!\n");
+        fprintf(stderr, "detected invalid BOM in the given UTF-32 file!\n");
         return -1;
     }
 
     unsigned int value = 0;
     unsigned char utf8value = 0;
     while (fread(&value, sizeof(value), 1, in) > 0) {
-        if (isBigEndian) {
-            // if file is BE, convert the current value to LE so we work with a single bit pattern
+        if (isBigEndian) {  // if file is BE, convert the current value to LE so we work with a single bit pattern
             unsigned int lastByte, secondByte, thirdByte, firstByte;
 
             // makes most significant BE byte the least significant byte in LE: shift right 24 bits (3 bytes)
@@ -189,7 +189,7 @@ int convUtf32to8(FILE* in, FILE* out)  {
             fwrite(&utf8value, sizeof(utf8value), 1, out);
 
         } else if (value <= 0x10FFFF) {
-            // 4 bytes em UTF-8
+            // 4 bytes in UTF-8
 
             // gets the 3 LSBs of the first byte
             utf8value = (value >> 18) & 0x07;
@@ -220,7 +220,7 @@ int convUtf32to8(FILE* in, FILE* out)  {
             fwrite(&utf8value, sizeof(utf8value), 1, out);
 
         } else {
-            fprintf(stderr, "%s", "I/O error: invalid UTF-8 character!\n");
+            fprintf(stderr, "found invalid UTF-8 character in the given UTF-32 file\n");
             return -1;
         }
     }
