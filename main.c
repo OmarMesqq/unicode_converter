@@ -1,40 +1,115 @@
 #include "convutf.h"
 #include <stdio.h>
+#include <sys/stat.h> 
+#include <sys/types.h> 
+#include <stdlib.h>
+#include <errno.h>
 
-int main() {
-    FILE* utf8In, *utf32LeIn, *utf32BeIn;
-    utf8In = fopen("utf8_peq.txt", "rb");
-    utf32LeIn = fopen("utf32_peq.txt", "rb");
-    utf32BeIn = fopen("utf32_peq_be.txt", "rb");
+#define MAX_LEN 128
+#define OUTPUT_FOLDER "generated"
+#define CONVERTED_FILE_TAG "CONV_"
 
-    if (!utf8In || !utf32LeIn || !utf32BeIn) {
-        printf("Couldn't open in files!\n");
+static char* get_basename(const char* filepath);
+
+int main(int argc, char* argv[]) {
+    if (argc != 2) {
+        fprintf(stderr, "usage: ./utfConverter <path/to/file>\n");
+        return -1;
+    }
+    
+    const char* filename = argv[1];
+    if (!filename) {
+        fprintf(stderr, "no filename provided!\n");
         return -1;
     }
 
-    FILE* utf8Out, *utf32LeOut, *utf32BeOut;
-    utf8Out = fopen("utf8_peq_convertido_utf32.txt", "wb");
-    utf32LeOut = fopen("utf32_peq_convertido_utf8.txt", "wb");
-    utf32BeOut = fopen("utf32_peq_be_convertido_utf8.txt", "wb");
-
-    if (!utf8Out || !utf32LeOut || !utf32BeOut) {
-        printf("Could not create out files!\n");
+    FILE* fin = fopen(filename, "rb");
+    if (!fin) {
+        fprintf(stderr, "failed to open file %s\n", filename);
         return -1;
     }
 
-    // UTF-8 to UTF-32
-    convUtf8to32(utf8In, utf8Out);
+    int read = 0;
+    int status = 0;
+    char* basename = get_basename(filename);
+    if (!basename) {
+        fprintf(stderr, "failed get basename for file %s\n", filename);
+        // goto cleanup or free(fin)
+        return -1;
+    }
 
-    // UTF-32 BE and LE to UTF-8
-    convUtf32to8(utf32LeIn, utf32LeOut);
-    convUtf32to8(utf32BeIn, utf32BeOut);
+    // converted filename creation
+    char convertedFileName[MAX_LEN] = {0};
+    read = snprintf(convertedFileName, MAX_LEN, "%s%s", CONVERTED_FILE_TAG, basename);
+    if (read >= MAX_LEN) {
+        printf("output filename buffer exceeded, truncating string\n");
+    }
 
-    fclose(utf8In);
-    fclose(utf32LeIn);
-    fclose(utf32BeIn);
-    fclose(utf8Out);
-    fclose(utf32LeOut);
-    fclose(utf32BeOut);
+    // output folder creation
+    mode_t dirPermissionsFlag = S_IRWXU | S_IRWXG | S_IRWXO; // 0777
+    status = mkdir(OUTPUT_FOLDER, dirPermissionsFlag);
+    if ((status != 0) && (errno != EEXIST)) {
+        fprintf(stderr, "failed to create folder %s\n", OUTPUT_FOLDER);
+        // goto cleanup or free(fin)
+        return -1;
+    }
 
+    // creation of file in output folder
+    char filenameInOutputFolder[MAX_LEN] = {0};
+    read = snprintf(filenameInOutputFolder, MAX_LEN, "./%s/%s", OUTPUT_FOLDER, convertedFileName);
+    if (read >= MAX_LEN) {
+        printf("output filename buffer exceeded, truncating string\n");
+    }
+
+    // converted file creation
+    FILE* fout = fopen(filenameInOutputFolder, "wb");
+    if (!fout) {
+        fprintf(stderr, "failed to create converted %s\n", convertedFileName);
+        // goto cleanup or free(fin)
+        return -1;
+    }
+
+    // detect if fin is UTF-8 or 32
+    // status = 0;
+    // if 8 -> status = convUtf8to32(fin, fout);
+    // elif 32 -> status = convUtf32to8(fin, fout);
+    // else -> panic
+
+    free(basename);
+    fclose(fin);
+    fclose(fout);
     return 0;
 }
+
+static char* get_basename(const char* filepath) {
+    if (!filepath) {
+        fprintf(stderr, "no filepath provided to extract a file basename!\n");
+        return NULL;
+    }
+    char* basename = malloc(MAX_LEN * sizeof(char));
+    if (!basename) {
+        fprintf(stderr, "failed to create array for basename\n");
+        return NULL;
+    }
+
+    int i = 0;
+    char* ptr = filepath;
+    while (*ptr != '\0') {
+        if (*ptr == '/') {
+            i = 0;
+            ptr++;
+            continue;
+        }
+        if (i >= MAX_LEN) {
+            printf("basename buffer exceeded, truncating string\n");
+            break;
+        }
+        basename[i] = *ptr;
+        ++i;
+        ptr++;
+    }
+    basename[i] = '\0';
+    // todo: edge cases
+    return basename;
+}
+
