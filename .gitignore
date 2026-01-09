@@ -1,2 +1,4 @@
 a.out
 utfConverter
+*.dSYM
+.DS_Store
