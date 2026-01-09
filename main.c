@@ -12,30 +12,38 @@
 static char* get_basename(const char* filepath);
 
 int main(int argc, char* argv[]) {
+    int ret = -1;
+    int read = 0;
+    int status = 0;
+    char* basename = NULL;
+    FILE* fin = NULL;
+    FILE* fout = NULL;
+
     if (argc != 2) {
         fprintf(stderr, "usage: ./utfConverter <path/to/file>\n");
-        return -1;
+        ret = -1;
+        goto cleanup;
     }
     
     const char* filename = argv[1];
     if (!filename) {
         fprintf(stderr, "no filename provided!\n");
-        return -1;
+        ret = -1;
+        goto cleanup;
     }
 
-    FILE* fin = fopen(filename, "rb");
+    fin = fopen(filename, "rb");
     if (!fin) {
         fprintf(stderr, "failed to open file %s\n", filename);
-        return -1;
+        ret = -1;
+        goto cleanup;
     }
 
-    int read = 0;
-    int status = 0;
-    char* basename = get_basename(filename);
+    basename = get_basename(filename);
     if (!basename) {
         fprintf(stderr, "failed get basename for file %s\n", filename);
-        // goto cleanup or free(fin)
-        return -1;
+        ret = -1;
+        goto cleanup;
     }
 
     // converted filename creation
@@ -50,8 +58,8 @@ int main(int argc, char* argv[]) {
     status = mkdir(OUTPUT_FOLDER, dirPermissionsFlag);
     if ((status != 0) && (errno != EEXIST)) {
         fprintf(stderr, "failed to create folder %s\n", OUTPUT_FOLDER);
-        // goto cleanup or free(fin)
-        return -1;
+        ret = -1;
+        goto cleanup;
     }
 
     // creation of file in output folder
@@ -62,11 +70,11 @@ int main(int argc, char* argv[]) {
     }
 
     // converted file creation
-    FILE* fout = fopen(filenameInOutputFolder, "wb");
+    fout = fopen(filenameInOutputFolder, "wb");
     if (!fout) {
         fprintf(stderr, "failed to create converted %s\n", convertedFileName);
-        // goto cleanup or free(fin)
-        return -1;
+        ret = -1;
+        goto cleanup;
     }
 
     // detect if fin is UTF-8 or 32
@@ -75,10 +83,11 @@ int main(int argc, char* argv[]) {
     // elif 32 -> status = convUtf32to8(fin, fout);
     // else -> panic
 
-    free(basename);
-    fclose(fin);
-    fclose(fout);
-    return 0;
+    cleanup:
+        free(basename);
+        if(fin) fclose(fin);
+        if(fout) fclose(fout);
+        return ret;
 }
 
 static char* get_basename(const char* filepath) {
@@ -109,7 +118,6 @@ static char* get_basename(const char* filepath) {
         ptr++;
     }
     basename[i] = '\0';
-    // todo: edge cases
+    // TODO: edge cases
     return basename;
 }
-
