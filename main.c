@@ -4,10 +4,15 @@
 #include <sys/types.h> 
 #include <stdlib.h>
 #include <errno.h>
+#include <string.h>
 
 #define MAX_LEN 128
 #define OUTPUT_FOLDER "generated"
 #define CONVERTED_FILE_TAG "CONV_"
+#define BOM_SIZE 4
+
+const unsigned char BOM_UTF32_BE[] = {0x00, 0x00, 0xFE, 0xFF};
+const unsigned char BOM_UTF32_LE[] = {0xFF, 0xFE, 0x00, 0x00};
 
 static char* get_basename(const char* filepath);
 
@@ -77,12 +82,42 @@ int main(int argc, char* argv[]) {
         goto cleanup;
     }
 
-    // detect if fin is UTF-8 or 32
-    // status = 0;
-    // if 8 -> status = convUtf8to32(fin, fout);
-    // elif 32 -> status = convUtf32to8(fin, fout);
-    // else -> panic
+    // detect if input file is UTF-32 BE, UTF-32 LE, or UTF-8
+    unsigned char bom[BOM_SIZE] = {0};
+    if (fread(bom, sizeof(unsigned char), BOM_SIZE, fin) != BOM_SIZE) {
+        // TODO: small files
+        fprintf(stderr, "failed to read initial %d bytes of file %s to detect eventual BOM", BOM_SIZE, filename);
+        ret = -1;
+        goto cleanup;
+    }
 
+    char isUtf8 = 0;
+    if (memcmp(bom, BOM_UTF32_BE, 4) == 0) {
+        printf("File is UTF-32 Big Endian");
+    } 
+    else if (memcmp(bom, BOM_UTF32_LE, 4) == 0) {
+        printf("File is UTF-32 Little Endian");
+    } 
+    else {
+        printf("BOM sequence not identified. Treating file as UTF-8\n");
+        isUtf8 = 1; 
+    }
+    rewind(fin);    // restore bytes read to detect BOM
+
+    // Do the actual conversion
+    if (isUtf8) {
+        status = convUtf8to32(fin, fout);
+    } else {
+        status = convUtf32to8(fin, fout);
+    }
+
+    if (status != 0) {
+        fprintf(stderr, "failed to convert file!\n");
+        ret = -1;
+        goto cleanup;
+    }
+
+    ret = 0;
     cleanup:
         free(basename);
         if(fin) fclose(fin);
