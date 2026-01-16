@@ -1,6 +1,8 @@
 #include "convutf.h"
+#include "utils.h"
 #include "unicode_types.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 int convUtf8to32(FILE* in, FILE* out) {
     /**
@@ -8,41 +10,48 @@ int convUtf8to32(FILE* in, FILE* out) {
      * UTF-32. I guess this is arbitrary.
      */
     if (fwrite(BOM_UTF32_LE, sizeof(unsigned char), BOM_SIZE, out) != BOM_SIZE) {
-        fprintf(stderr, "failed to write LE BOM to converted UTF-32 file!\n");
+        fprintf(stderr, "convUtf8to32: failed to write LE BOM to converted UTF-32 file!\n");
         return -1;
     }
-    
-    unsigned char c = 0;
-    unsigned int utf32Code = 0;
-    unsigned char mask = 0x00;
+    long fSize = get_filesize(in);
+    if (fSize == -1) return -1;
 
-    while (fread(&c, 1, 1, in) > 0) {
+    unsigned int* utf32UnsigIntArr = calloc(fSize, sizeof(unsigned int));
+    if (!utf32UnsigIntArr) {
+        fprintf(stderr, "convUtf8to32: failed to allocate UTF-32 unsigned integer array!\n");
+        return -1;
+    }
+
+    /**
+     * index for the UTF-32 unsigned int array, 
+     * as well as the actual number of UTF-32 characters
+     * created from the UTF-8 bytes
+     */
+    unsigned i = 0;
+    int c = 0;
+    while ((c = fgetc(in)) != EOF) {
         if ((c & 0x80) == 0) {
             // 0x80 = 1000 0000
             // 1 byte (0xxxxxxx)
             // U+0000 to U+007F
 
             // extract 7 LSBs of the byte
-            mask = 0x7F;
-            c &= mask;
+            c &= 0x7F;
 
-            utf32Code |= c;
-
+            utf32UnsigIntArr[i] |= c;
         } else if ((c & 0xE0) == 0xC0) {
             // 0xE0 = 1110 0000
             // 2 bytes (110xxxxx)
             // U+0080 to U+07FF
             
             // extract 5 LSBs from the first byte
-            mask = 0x1F;
-            c &= mask;
-            utf32Code |= (c << 6);
+            c &= 0x1F;
+            utf32UnsigIntArr[i] |= (c << 6);
             
             // extract 6 LSBs from the second byte
-            mask = 0x3F;
             fread(&c, 1, 1, in);
-            c &= mask;
-            utf32Code |= c;
+            c &= 0x3F;
+            utf32UnsigIntArr[i] |= c;
             
         } else if ((c & 0xF0) == 0xE0) {
             // 0xF0 = 1111 0000
@@ -50,19 +59,17 @@ int convUtf8to32(FILE* in, FILE* out) {
             // U+0800 to U+FFFF
 
             // extract 4 LSBs from the first byte
-            mask = 0x0F;
-            c &= mask;
-            utf32Code |= (c << 12);
+            c &= 0x0F;
+            utf32UnsigIntArr[i] |= (c << 12);
 
             // extract 6 LSBs from second and third byte
-            mask = 0x3F;
             fread(&c, 1, 1, in);
-            c &= mask;
-            utf32Code |= (c << 6);
+            c &= 0x3F;
+            utf32UnsigIntArr[i] |= (c << 6);
 
             fread(&c, 1, 1, in);
-            c &= mask;
-            utf32Code |= c;
+            c &= 0x3F;
+            utf32UnsigIntArr[i] |= c;
        
         } else if ((c & 0xF8) == 0xF0) {
             // 0xF8 = 1111 1000
@@ -70,34 +77,32 @@ int convUtf8to32(FILE* in, FILE* out) {
             // U+10000 to U+10FFFF
 
             // extract 3 LSBs from first byte
-            mask = 0x07;
-            c &= mask;
-            utf32Code |= (c << 18);
+            c &= 0x07;
+            utf32UnsigIntArr[i] |= (c << 18);
 
             // extract 6 LSBs from second, third, and fourth bytes
-            mask = 0x3F;
             fread(&c, 1, 1, in);
-            c &= mask;
-            utf32Code |= (c << 12);
+            c &= 0x3F;
+            utf32UnsigIntArr[i] |= (c << 12);
 
             fread(&c, 1, 1, in);
-            c &= mask;
-            utf32Code |= (c << 6);
+            c &= 0x3F;
+            utf32UnsigIntArr[i] |= (c << 6);
 
             fread(&c, 1, 1, in);
-            c &= mask;
-            utf32Code |= c;
+            c &= 0x3F;
+            utf32UnsigIntArr[i] |= c;
 
         } else {
             fprintf(stderr, "invalid UTF-8 character in the given UTF-8 file!\n");
             return -1;
         }
+        i++;
+    }
 
-        if (fwrite(&utf32Code, sizeof(utf32Code), 1, out) != 1) {
-            fprintf(stderr, "could not write equivalent integer of UTF-8 character in converted UTF-32 file!\n");
-            return -1;
-        }
-        utf32Code = 0;
+    if (fwrite(utf32UnsigIntArr, sizeof(unsigned int), i, out) != i) {
+        fprintf(stderr, "convUtf8to32: failed to write UTF-32 characters in converted file!\n");
+        return -1;
     }
 
     return 0;
