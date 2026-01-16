@@ -3,3 +3,4 @@ utfConverter
 *.dSYM
 .DS_Store
 generated
+libs/
