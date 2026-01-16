@@ -1,19 +1,20 @@
 #include "convutf.h"
+#include "unicode_types.h"
 #include <stdio.h>
 
-#define BOM_SIZE 4
-
 int convUtf8to32(FILE* in, FILE* out) {
-    unsigned char c = 0;
-    unsigned int utf32Code = 0;
-    unsigned char mask = 0x00;
-
-    // Little Endian BOM: FF FE 00 00
-    unsigned char bom[BOM_SIZE] = {255, 254, 0, 0};
-    if (fwrite(bom, sizeof(char), BOM_SIZE, out) != BOM_SIZE) {
+    /**
+     * Convert UTF-8 to **Little Endian**
+     * UTF-32. I guess this is arbitrary.
+     */
+    if (fwrite(BOM_UTF32_LE, sizeof(unsigned char), BOM_SIZE, out) != BOM_SIZE) {
         fprintf(stderr, "failed to write LE BOM to converted UTF-32 file!\n");
         return -1;
     }
+    
+    unsigned char c = 0;
+    unsigned int utf32Code = 0;
+    unsigned char mask = 0x00;
 
     while (fread(&c, 1, 1, in) > 0) {
         if ((c & 0x80) == 0) {

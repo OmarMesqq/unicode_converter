@@ -3,6 +3,7 @@ set -uo pipefail
 
 # 1. Compile with debug symbols and all warnings
 echo "Compiling..."
+rm -rf generated/ utfConverter
 make release
 
 # 2. Run conversions

@@ -1,4 +1,6 @@
 #include "convutf.h"
+#include "unicode_types.h"
+#include "utils.h"
 #include <stdio.h>
 #include <sys/stat.h> 
 #include <sys/types.h> 
@@ -9,12 +11,6 @@
 #define MAX_LEN 128
 #define OUTPUT_FOLDER "generated"
 #define CONVERTED_FILE_TAG "CONV_"
-#define BOM_SIZE 4
-
-const unsigned char BOM_UTF32_BE[] = {0x00, 0x00, 0xFE, 0xFF};
-const unsigned char BOM_UTF32_LE[] = {0xFF, 0xFE, 0x00, 0x00};
-
-static char* get_basename(const char* filepath);
 
 int main(int argc, char* argv[]) {
     int ret = -1;
@@ -44,7 +40,7 @@ int main(int argc, char* argv[]) {
         goto cleanup;
     }
 
-    basename = get_basename(filename);
+    basename = get_basename(filename, MAX_LEN);
     if (!basename) {
         fprintf(stderr, "failed get basename for file %s\n", filename);
         ret = -1;
@@ -123,35 +119,4 @@ int main(int argc, char* argv[]) {
         if(fin) fclose(fin);
         if(fout) fclose(fout);
         return ret;
-}
-
-static char* get_basename(const char* filepath) {
-    if (!filepath) {
-        fprintf(stderr, "no filepath provided to extract a file basename!\n");
-        return NULL;
-    }
-    char* basename = malloc(MAX_LEN * sizeof(char));
-    if (!basename) {
-        fprintf(stderr, "failed to create array for basename\n");
-        return NULL;
-    }
-
-    int i = 0;
-    char* ptr = filepath;
-    while (*ptr != '\0') {
-        if (*ptr == '/') {
-            i = 0;
-            ptr++;
-            continue;
-        }
-        if (i >= MAX_LEN) {
-            printf("basename buffer exceeded, truncating string\n");
-            break;
-        }
-        basename[i] = *ptr;
-        ++i;
-        ptr++;
-    }
-    basename[i] = '\0';
-    return basename;
 }
