@@ -1,5 +1,5 @@
 #include "convutf.h"
-#include "utils.h"
+#include "libs/libcutilities/cutilities.h"
 #include "unicode_types.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,6 +13,7 @@ int convUtf8to32(FILE* in, FILE* out) {
         fprintf(stderr, "convUtf8to32: failed to write Little Endian BOM to converted file!\n");
         return -1;
     }
+    
     long fSize = get_filesize(in);
     if (fSize == -1) return -1;
 
