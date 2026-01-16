@@ -10,7 +10,7 @@ int convUtf8to32(FILE* in, FILE* out) {
      * UTF-32. I guess this is arbitrary.
      */
     if (fwrite(BOM_UTF32_LE, sizeof(unsigned char), BOM_SIZE, out) != BOM_SIZE) {
-        fprintf(stderr, "convUtf8to32: failed to write LE BOM to converted UTF-32 file!\n");
+        fprintf(stderr, "convUtf8to32: failed to write Little Endian BOM to converted file!\n");
         return -1;
     }
     long fSize = get_filesize(in);
@@ -94,7 +94,7 @@ int convUtf8to32(FILE* in, FILE* out) {
             utf32UnsigIntArr[i] |= c;
 
         } else {
-            fprintf(stderr, "invalid UTF-8 character in the given UTF-8 file!\n");
+            fprintf(stderr, "convUtf8to32: invalid UTF-8 character in input file!\n");
             return -1;
         }
         i++;
@@ -109,9 +109,9 @@ int convUtf8to32(FILE* in, FILE* out) {
 }
 
 int convUtf32to8(FILE* in, FILE* out)  {
-    unsigned char bom[BOM_SIZE] = {};
+    unsigned char bom[BOM_SIZE] = {0};
     if (fread(bom, sizeof(unsigned char), BOM_SIZE, in) != BOM_SIZE) {
-        fprintf(stderr, "failed to read BOM of given UTF-32 file!\n");
+        fprintf(stderr, "convUtf32to8: failed to read BOM of input file!\n");
         return -1;
     }
 
@@ -122,7 +122,7 @@ int convUtf32to8(FILE* in, FILE* out)  {
         // BOM starts with 00: Big Endian file
         isBigEndian = 1;
     } else {
-        fprintf(stderr, "detected invalid BOM in the given UTF-32 file!\n");
+        fprintf(stderr, "convUtf32to8: unexpected first byte in BOM of input file: %02x\n", *bom);
         return -1;
     }
 
@@ -226,7 +226,7 @@ int convUtf32to8(FILE* in, FILE* out)  {
             fwrite(&utf8value, sizeof(utf8value), 1, out);
 
         } else {
-            fprintf(stderr, "found invalid UTF-8 character in the given UTF-32 file\n");
+            fprintf(stderr, "convUtf32to8: invalid UTF-8 character in input file\n");
             return -1;
         }
     }
